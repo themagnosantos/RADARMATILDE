@@ -32,7 +32,6 @@ button{cursor:pointer}
 .sidebar{position:fixed;top:var(--hdr-h);left:0;bottom:0;width:var(--sidebar-w);background:var(--forest);overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px;z-index:80}
 .sb-section{background:rgba(255,255,255,.07);border-radius:11px;padding:12px}.sb-title{font-size:10px;font-weight:900;letter-spacing:.08em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:10px}.sb-field{margin-bottom:10px}.sb-field:last-child{margin-bottom:0}.sb-label{font-size:12px;font-weight:700;color:rgba(255,255,255,.82);margin-bottom:5px;display:flex;align-items:center;gap:5px}
 .sb-input,.sb-select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:700;outline:none;transition:.15s}.sb-input:focus,.sb-select:focus{border-color:var(--amber)}.sb-select option{background:var(--forest-dk);color:#fff}
-.btn-apply{width:100%;padding:10px;border-radius:8px;border:none;background:var(--amber);color:#fff;font-size:13px;font-weight:900;transition:.15s}.btn-apply:hover{filter:brightness(.95);transform:translateY(-1px)}
 .filter-summary{display:flex;flex-direction:column;gap:6px}.fs-pill{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7)}.fs-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .main-content{margin-left:var(--sidebar-w);flex:1;padding:24px 20px;min-width:0}
 .mode-panel{display:none}.mode-panel.active{display:block}
@@ -94,8 +93,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 12p
     <div class="sb-field"><label class="sb-label" for="flt-bim">Bimestre</label><select class="sb-select" id="flt-bim"><option value="all">Todos os Bimestres</option></select></div>
     <div class="sb-field"><label class="sb-label" for="flt-disc">Disciplina Analisada</label><select class="sb-select" id="flt-disc"><option value="all">Todas as Disciplinas</option></select></div>
     <div class="sb-field"><label class="sb-label" for="flt-status">Mostrar alunos</label><select class="sb-select" id="flt-status"><option value="all">Todos</option><option value="critical">🔴 Crítico (nota + falta)</option><option value="nota">🔵 Compensação de nota</option><option value="falta">🟡 Compensação de falta</option><option value="ok">🟢 Sem pendências</option></select></div>
-    <button class="btn-apply" id="btn-apply">🔄 Aplicar Filtros</button>
-    <div class="muted-note" style="margin-top:7px;color:rgba(255,255,255,.55)">O filtro “Mostrar alunos” só é aplicado ao clicar em “Aplicar Filtros”.</div>
+    <div class="muted-note" style="margin-top:7px;color:rgba(255,255,255,.55)">Os filtros são atualizados automaticamente assim que você alterar uma opção.</div>
   </section>
   <section class="sb-section"><div class="sb-title">📋 Resumo Ativo</div><div class="filter-summary" id="filter-summary"></div></section>
   <section class="sb-section" style="margin-top:auto"><div class="sb-title">ℹ Legenda</div><div style="display:flex;flex-direction:column;gap:7px"><div class="fs-pill"><span class="fs-dot" style="background:var(--blue)"></span>Compensação de Nota</div><div class="fs-pill"><span class="fs-dot" style="background:var(--amber)"></span>Compensação de Faltas</div><div class="fs-pill"><span class="fs-dot" style="background:var(--red)"></span>Crítico</div><div class="fs-pill"><span class="fs-dot" style="background:var(--green)"></span>Regular</div></div></section>
@@ -111,7 +109,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 12p
   </div>
   <div class="panel-grid">
     <div class="tbl-card"><div class="tbl-card-hdr"><span class="tc-title">Alunos em risco por Disciplina</span><span class="tc-count" id="ov-disc-note">Clique em uma barra para abrir a disciplina</span></div><div style="padding:14px;max-height:390px;overflow:auto"><div class="disc-bars" id="ov-disc-bars"></div></div></div>
-    <div class="tbl-card"><div class="tbl-card-hdr"><span class="tc-title">Turmas · Situação Consolidada</span><span class="tc-count">1 aluno = 1 headcount</span></div><div class="tbl-wrap" style="max-height:390px"><table><thead><tr><th>Turma</th><th>Alunos</th><th>Comp. Nota</th><th>Comp. Faltas</th><th>Críticos</th><th>% Risco</th></tr></thead><tbody id="ov-turma-body"></tbody></table></div></div>
+    <div class="tbl-card"><div class="tbl-card-hdr"><span class="tc-title">Turmas · Situação Consolidada</span><span class="tc-count"></span></div><div class="tbl-wrap" style="max-height:390px"><table><thead><tr><th>Turma</th><th>Alunos</th><th>Comp. Nota</th><th>Comp. Faltas</th><th>Críticos</th><th>% Risco</th></tr></thead><tbody id="ov-turma-body"></tbody></table></div></div>
   </div>
   <div class="tbl-card"><div class="tbl-card-hdr"><span class="tc-title">Leitura rápida</span><span class="tc-count" id="ov-readout"></span></div><div id="ov-readout-body" class="no-data"></div></div>
 </section>
@@ -236,8 +234,12 @@ function populateDropdowns(){
   $('badge-disc').textContent=D.length;
 }
 function applyFilters(){
-  readFilterControls(); state.currentDisc=null; state.currentDiscTab='all'; state.studentKey=null;
+  readFilterControls(); state.currentDisc=state.flt.disc==='all'?null:state.flt.disc; state.currentDiscTab='all'; state.studentKey=null;
   updateFilterSummary(); renderCurrentMode();
+}
+
+function handleAutoFilter(){
+  applyFilters();
 }
 function setMode(mode){
   state.mode=mode;document.querySelectorAll('.mode-panel').forEach(e=>e.classList.toggle('active',e.id==='panel-'+mode));document.querySelectorAll('.hdr-tab').forEach(e=>e.classList.toggle('active',e.dataset.mode===mode));renderCurrentMode();
@@ -382,8 +384,16 @@ async function downloadStudentPDF(){
 function slug(v){return norm(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,70)||'radar_matilde'}
 function wire(){
   document.querySelectorAll('.hdr-tab').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
-  $('btn-apply').addEventListener('click',applyFilters);
-  $('flt-disc').addEventListener('change',()=>{readFilterControls();state.currentDisc=state.flt.disc==='all'?null:state.flt.disc;state.currentDiscTab='all';state.studentKey=null;updateFilterSummary();renderCurrentMode()});
+
+  // Filtros principais: atualização instantânea, sem botão "Aplicar Filtros".
+  ['flt-turma','flt-bim','flt-disc','flt-status'].forEach(id=>{
+    $(id).addEventListener('change',handleAutoFilter);
+  });
+  ['cfg-media','cfg-limf'].forEach(id=>{
+    $(id).addEventListener('input',handleAutoFilter);
+    $(id).addEventListener('change',handleAutoFilter);
+  });
+
   $('st-turma-sel').addEventListener('change',e=>{state.studentTurma=e.target.value;renderStudentMode()});
   $('st-status-sel').addEventListener('change',e=>{state.studentStatus=e.target.value;renderStudentMode()});
   $('st-search').addEventListener('input',e=>{state.studentSearch=e.target.value.trim().toLocaleLowerCase('pt-BR');renderStudentMode()});
@@ -399,4 +409,120 @@ function navigateFromKPI(status){
 }
 function init(){populateDropdowns();wire();readFilterControls();updateFilterSummary();renderCurrentMode()}
 window.addEventListener('DOMContentLoaded',init);
-</script></body></html>
+</script>
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+
+<style>
+  .radar-tour-theme {
+    background-color: #FFFFFF;
+    color: #1C2B22;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(24, 42, 32, 0.12);
+    border: 1px solid rgba(0,0,0,0.04);
+    font-family: 'Nunito', system-ui, sans-serif;
+  }
+  .radar-tour-theme .driver-popover-title {
+    font-weight: 900;
+    color: #1A3C2D;
+    font-size: 16px;
+    margin-bottom: 5px;
+  }
+  .radar-tour-theme .driver-popover-description {
+    color: #5C7266;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .radar-tour-theme .driver-popover-next-btn, 
+  .radar-tour-theme .driver-popover-prev-btn {
+    border-radius: 8px;
+    font-weight: 800;
+    padding: 6px 12px;
+  }
+  .radar-tour-theme .driver-popover-next-btn {
+    background-color: #1A3C2D;
+    color: #fff;
+    border: none;
+    text-shadow: none;
+  }
+  .radar-tour-theme .driver-popover-next-btn:hover {
+    background-color: #2D6A4F;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const driver = window.driver.js.driver;
+    
+    const tour = driver({
+      showProgress: true,
+      nextBtnText: 'Próximo ➔',
+      prevBtnText: '⬅ Anterior',
+      doneBtnText: 'Começar!',
+      popoverClass: 'radar-tour-theme',
+      steps: [
+        { 
+          element: '.app-logo', 
+          popover: { 
+            title: 'Bem-vindo ao Radar Matilde!', 
+            description: 'Este é o seu novo painel de gestão de compensações. Vamos fazer um tour rápido para você extrair o máximo dos dados nas buscas ativas.', 
+            side: "bottom", align: 'start' 
+          } 
+        },
+        { 
+          element: '.sidebar', 
+          popover: { 
+            title: 'Filtros Inteligentes', 
+            description: 'Aqui você ajusta a Média Mínima, o limite de faltas tolerável e filtra os dados por Turma, Bimestre ou Disciplina. O dashboard inteiro se adapta instantaneamente após clicar em "Aplicar Filtros".', 
+            side: "right", align: 'start' 
+          } 
+        },
+        { 
+          element: '.kpi-row', 
+          popover: { 
+            title: 'Termômetro da Escola', 
+            description: 'Esses cards mostram o cenário macro. Dica de ouro: os cards coloridos são clicáveis! Clique neles para filtrar a tabela e focar apenas nos alunos que precisam de atenção.', 
+            side: "bottom", align: 'center' 
+          } 
+        },
+        { 
+          element: '#tab-disc', 
+          popover: { 
+            title: 'Visão Cirúrgica por Matéria', 
+            description: 'Nesta aba superior, você acessa os dados organizados por disciplina. Excelente para identificar turmas críticas e planejar o nivelamento.', 
+            side: "bottom", align: 'center' 
+          } 
+        },
+        { 
+          element: '#tab-student', 
+          popover: { 
+            title: 'Foco Total no Aluno', 
+            description: 'Aqui é possível pesquisar o histórico de um estudante e emitir o Plano de Ação, detalhando pendências de notas e compensações de ausências.', 
+            side: "bottom", align: 'start' 
+          } 
+        }
+      ]
+    });
+
+    // Inicia o tour automaticamente apenas na primeira vez que o professor abrir
+    if (!localStorage.getItem('tour_radar_v3_concluido')) {
+      setTimeout(() => {
+        tour.drive();
+        localStorage.setItem('tour_radar_v3_concluido', 'true');
+      }, 500); // Aguarda meio segundo para garantir que a tela carregou
+    }
+  });
+</script>
+
+
+
+
+
+
+
+
+</body></html>
